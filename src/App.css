@@ -1,0 +1,41 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+.chat-input {
+  padding: 8px 5px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+}
+
+.message-item {
+  list-style: none;
+  border: 1px solid #eee;
+  padding-left: 10px;
+  border-radius: 10px;
+  margin-top: 5px;
+}
