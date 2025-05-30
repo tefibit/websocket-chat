@@ -5,11 +5,18 @@ import './App.css'
 
 function App() {
   const [count, setCount] = useState(0);
-  const [socketURL, setSocketURL] = useState(`wss:dev-api.tefibit.com/ws`);
+  // const [socketURL, setSocketURL] = useState(`ws:146.190.86.208:8088/ws/`);
+  const [socketURL, setSocketURL] = useState(`ws://146.190.86.208:8088/ws/1`);
   const [message, setMessage] = useState('');
 
 
   const [socket, setSocket] = useState<WebSocket | null>(null);
+
+  const [messages, setMessages] = useState<string[]>([]);
+
+
+
+
 
   useEffect(() => {
     const ws = new WebSocket(socketURL);
@@ -20,14 +27,15 @@ function App() {
       console.log("Connected to WebSocket server");
     };
     ws.onmessage = (event) => {
-      let jsonData = null;
+      console.log("Received message from server:", event.data);
       try {
-        jsonData = JSON.parse(event.data);
-        // console.log('jsonData', jsonData)
+        const jsonData = JSON.parse(event.data);
+        console.log('jsonData', jsonData);
+        setMessages(prev => [...prev, jsonData.content || event.data]);
       } catch (error) {
-        console.info("Cannot parse socket message", error);
+        console.warn("Không phải JSON:", event.data);
+        setMessages(prev => [...prev, event.data]); // vẫn hiển thị thông báo lỗi từ server
       }
-
     };
 
 
@@ -51,10 +59,17 @@ function App() {
 
   }, []);
 
+
   const sendMessage = () => {
     if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(message);
-      console.log("Sent:", message);
+      socket.send(JSON.stringify({
+        type: "chatMessage",
+        room_id: 1,
+        content: message || "Hello from client", // Sửa tại đây
+        reply_to: null,
+        sender_id: 1,
+        message_id: "550e8400-e29b-41d4-a716-446655440000"
+      }));
       setMessage('');
     } else {
       console.warn("WebSocket is not connected");
@@ -65,9 +80,9 @@ function App() {
       <div>
         <div>
           <ul>
-            <li className='message-item'><p>message 1</p></li>
-            <li className='message-item'><p>message 1</p></li>
-            <li className='message-item'><p>message 1</p></li>
+            {messages.map((msg, index) => (
+              <li key={index} className='message-item'><p>{msg}</p></li>
+            ))}
           </ul>
 
         </div>
