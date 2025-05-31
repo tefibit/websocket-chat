@@ -30,7 +30,13 @@ export type WebSocketMessageResult = Omit<WebSocketMessage, 'message_type'> & {
 };
 
 // const SOCKET_URL = 'ws://146.190.86.208:8088/ws/1'; http://146.190.86.208:8088/api/auth/login
-const SOCKET_URL = 'ws://146.190.86.208:8088/ws/1';
+// const SOCKET_URL = 'ws://146.190.86.208:8088/ws/1';
+const ROOM_ID = 3;
+const USER_ID = 2;
+const SOCKET_URL = `ws://localhost:8000/ws/${USER_ID}`;
+const URL = 'http://localhost:8000/api';
+const TOKEN =
+  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE3NDkyODIxNjgsImlhdCI6MTc0ODY3NzM2OCwiZW1haWwiOiJ0ZXN0LXhhdGhjcmFsckBzcnYxLm1haWwtdGVzdGVyLmNvbSIsImlkIjoyfQ.DGdyaVUffHR5W6uk1465Um8E6dhlgRT1DkXrU9XINaQ';
 
 function App() {
   const [message, setMessage] = useState('');
@@ -68,7 +74,7 @@ function App() {
 
     const messageData: WebSocketMessage = {
       message_type: 'chatMessage',
-      room_id: 1,
+      room_id: ROOM_ID,
       content: message,
       reply_to: null,
       sender_id: 1,
@@ -79,11 +85,53 @@ function App() {
     setMessage('');
   }, [message, sendMessage]);
 
+  const handleJoinRoom = async () => {
+    try {
+      const response = await fetch(`${URL}/rooms/join/${ROOM_ID}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TOKEN.trim()}`,
+        },
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
+        console.error('Failed to join room:', errorData);
+        alert(`Failed to join room: ${errorData.message || response.statusText}`);
+        return;
+      }
+
+      const data = await response.json().catch(() => null);
+      console.log('Successfully joined room:', data);
+      alert('Successfully joined room!');
+    } catch (error) {
+      console.error('Error joining room:', error);
+      alert(`Error joining room: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   return (
     <div className='chat-container'>
-      <div className='connection-status'>
-        Status: {isConnected ? 'Connected' : 'Disconnected'}
-        {error && <span className='error'> (Error occurred)</span>}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px',
+          gap: '10px',
+        }}
+      >
+        <div className='connection-status'>
+          Status: {isConnected ? 'Connected' : 'Disconnected'}
+          {error && <span className='error'> (Error occurred)</span>}
+        </div>
+        <button onClick={handleJoinRoom} style={{ height: '100%' }}>
+          Join Room {ROOM_ID}
+        </button>
       </div>
 
       <div className='messages-container'>
@@ -118,4 +166,3 @@ function App() {
 }
 
 export default App;
-
