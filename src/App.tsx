@@ -29,8 +29,8 @@ export type WebSocketMessageResult = Omit<WebSocketMessage, 'message_type'> & {
   }>;
 };
 
-// const SOCKET_URL = 'ws://146.190.86.208:8088/ws/1';
-const SOCKET_URL = 'ws://localhost:8000/ws/1';
+// const SOCKET_URL = 'ws://146.190.86.208:8088/ws/1'; http://146.190.86.208:8088/api/auth/login
+const SOCKET_URL = 'ws://146.190.86.208:8088/ws/1';
 
 function App() {
   const [message, setMessage] = useState('');
