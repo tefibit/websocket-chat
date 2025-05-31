@@ -1,101 +1,121 @@
-import { useEffect, useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useCallback } from 'react';
+// import { useWebSocket } from './hooks/useWebSocket';
+import './App.css';
+import { useWebSocket } from './hooks/hooks_useWebsocket';
+
+type Message = {
+  id: string;
+  content: string;
+  type: string;
+  timestamp: number;
+};
+
+export type WebSocketMessage = {
+  room_id?: number;
+  content: string;
+  reply_to?: string | null;
+  sender_id?: number;
+  message_id?: string;
+  message_type: string;
+  is_online?: boolean;
+};
+
+export type WebSocketMessageResult = Omit<WebSocketMessage, 'message_type'> & {
+  type: string;
+  messages?: Array<{
+    message_id?: string;
+    content: string;
+    type: string;
+  }>;
+};
+
+// const SOCKET_URL = 'ws://146.190.86.208:8088/ws/1';
+const SOCKET_URL = 'ws://localhost:8000/ws/1';
 
 function App() {
-  const [count, setCount] = useState(0);
-  // const [socketURL, setSocketURL] = useState(`ws:146.190.86.208:8088/ws/`);
-  const [socketURL, setSocketURL] = useState(`ws://146.190.86.208:8088/ws/1`);
   const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
 
-
-  const [socket, setSocket] = useState<WebSocket | null>(null);
-
-  const [messages, setMessages] = useState<string[]>([]);
-
-
-
-
-
-  useEffect(() => {
-    const ws = new WebSocket(socketURL);
-    // if(socket){
-    //   socket.send(JSON.stringify({ type: "ping" }));
-    // }
-    ws.onopen = () => {
-      console.log("Connected to WebSocket server");
-    };
-    ws.onmessage = (event) => {
-      console.log("Received message from server:", event.data);
-      try {
-        const jsonData = JSON.parse(event.data);
-        console.log('jsonData', jsonData);
-        setMessages(prev => [...prev, jsonData.content || event.data]);
-      } catch (error) {
-        console.warn("Không phải JSON:", event.data);
-        setMessages(prev => [...prev, event.data]); // vẫn hiển thị thông báo lỗi từ server
+  const handleMessage = useCallback((data: WebSocketMessageResult) => {
+    switch (data.type) {
+      case 'roomMessages': {
+        const newMessages = data.messages?.map((message) => ({
+          id: message.message_id!,
+          content: message.content,
+          type: message.type,
+          timestamp: Date.now(),
+        }));
+        setMessages(newMessages || []);
+        break;
       }
-    };
-
-
-
-    ws.onerror = (error) => {
-      console.error("WebSocket Error:", error);
-      // setLoading(false);
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket Disconnected");
-    };
-
-    setSocket(ws);
-
-    return () => {
-      if (ws.readyState === 1) {
-        ws.close();
-      }
-    };
-
+      default:
+        break;
+    }
   }, []);
 
+  const { isConnected, error, sendMessage } = useWebSocket({
+    url: SOCKET_URL,
+    onMessage: handleMessage,
+    onError: (error) => {
+      console.error('WebSocket error:', error);
+    },
+    onClose: () => {},
+    onOpen: () => {},
+  });
 
-  const sendMessage = () => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({
-        type: "chatMessage",
-        room_id: 1,
-        content: message || "Hello from client", // Sửa tại đây
-        reply_to: null,
-        sender_id: 1,
-        message_id: "550e8400-e29b-41d4-a716-446655440000"
-      }));
-      setMessage('');
-    } else {
-      console.warn("WebSocket is not connected");
-    }
-  };
+  const handleSendMessage = useCallback(() => {
+    if (!message.trim()) return;
+
+    const messageData: WebSocketMessage = {
+      message_type: 'chatMessage',
+      room_id: 1,
+      content: message,
+      reply_to: null,
+      sender_id: 1,
+      message_id: crypto.randomUUID(),
+    };
+
+    sendMessage(messageData);
+    setMessage('');
+  }, [message, sendMessage]);
+
   return (
-    <>
-      <div>
-        <div>
-          <ul>
-            {messages.map((msg, index) => (
-              <li key={index} className='message-item'><p>{msg}</p></li>
-            ))}
-          </ul>
-
-        </div>
-        <div>
-
-          <input type="text" className='chat-input' value={message} onChange={(e) => setMessage(e.target.value)} />
-          <button onClick={sendMessage}>Send message</button>
-
-        </div>
-
+    <div className='chat-container'>
+      <div className='connection-status'>
+        Status: {isConnected ? 'Connected' : 'Disconnected'}
+        {error && <span className='error'> (Error occurred)</span>}
       </div>
-    </>
-  )
+
+      <div className='messages-container'>
+        <ul className='messages-list'>
+          {messages.map((msg) => (
+            <li key={msg.id} className={`message-item ${msg.type}`}>
+              <p>{msg.content}</p>
+              <small>{new Date(msg.timestamp).toLocaleTimeString()}</small>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className='input-container'>
+        <input
+          type='text'
+          className='chat-input'
+          value={message}
+          onChange={(e) => {
+            setMessage(e.target.value);
+          }}
+          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+          placeholder='Type a message...'
+          disabled={!isConnected}
+        />
+        <button onClick={handleSendMessage} disabled={!isConnected || !message.trim()}>
+          Send
+        </button>
+      </div>
+    </div>
+  );
 }
 
-export default App
+export default App;
+
