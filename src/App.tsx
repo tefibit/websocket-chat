@@ -11,6 +11,7 @@ type Message = {
 };
 
 export type WebSocketMessage = {
+  type: string;
   room_id?: number;
   content: string;
   reply_to?: string | null;
@@ -18,6 +19,13 @@ export type WebSocketMessage = {
   message_id?: string;
   message_type: string;
   is_online?: boolean;
+  messages?: Array<{
+    id: string;
+    content: string;
+    type: string;
+    sender_id: number;
+    created_at: string;
+  }>;
 };
 
 export type WebSocketMessageResult = Omit<WebSocketMessage, 'message_type'> & {
@@ -35,7 +43,8 @@ const ROOM_ID = 1;
 const USER_ID = 1;
 const SOCKET_URL = `wss://tefihub-api.tefibit.com/ws/${USER_ID}`;
 const URL = 'https://tefihub-api.tefibit.com/api';
-const TOKEN = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE3NDkyODU0MDMsImlhdCI6MTc0ODY4MDYwMywiZW1haWwiOiJsZXRvYW4yODVAZ21haWwuY29tIiwiaWQiOjF9.ra71uAhxbrQJQ863D-tiNZirFWaqdKxeHqO_FtLivJ0';
+const TOKEN =
+  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE3NDkyODU0MDMsImlhdCI6MTc0ODY4MDYwMywiZW1haWwiOiJsZXRvYW4yODVAZ21haWwuY29tIiwiaWQiOjF9.ra71uAhxbrQJQ863D-tiNZirFWaqdKxeHqO_FtLivJ0';
 
 function App() {
   const [message, setMessage] = useState('');
@@ -43,9 +52,6 @@ function App() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
-
-
 
   const [user, setUser] = useState<any>(null);
 
@@ -59,27 +65,30 @@ function App() {
     axios.get(`${URL}/messages/room/5`, { headers }).then((res) => {
       console.log('MESSSGe', res.data.data);
       setMessages(res.data.data);
-      setRooms([1, 2, 3])
-    })
-  }, [])
+      setRooms([1, 2, 3]);
+    });
+  }, []);
 
   const handleMessage = useCallback((data: WebSocketMessageResult) => {
     switch (data.type) {
       case 'roomMessages': {
-        const newMessages = data.messages?.map((message) => ({
-          id: message.message_id!,
-          content: message.content,
-          type: message.type,
-          timestamp: Date.now(),
-        }));
-        setMessages(newMessages || []);
+        if (data.messages) {
+          const newMessages = data.messages.map((message) => ({
+            id: message.id,
+            content: message.content,
+            type: message.type,
+            timestamp: new Date(message.created_at).getTime(),
+          }));
+          console.log('Setting room messages:', newMessages);
+          setMessages(newMessages);
+        }
         break;
       }
       case 'chatMessage': {
         const newMsg = {
           id: data.message_id || crypto.randomUUID(),
           content: data.content,
-          type: 'chatMessage',
+          type: data.type,
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, newMsg]);
@@ -96,19 +105,20 @@ function App() {
     onError: (error) => {
       console.error('WebSocket error:', error);
     },
-    onClose: () => { },
-    onOpen: () => { },
+    onClose: () => {},
+    onOpen: () => {},
   });
 
   const handleSendMessage = useCallback(() => {
     if (!message.trim()) return;
 
     const messageData: WebSocketMessage = {
+      type: 'chatMessage',
       message_type: 'chatMessage',
       room_id: ROOM_ID,
       content: message,
       reply_to: null,
-      sender_id: 1,
+      sender_id: USER_ID,
       message_id: crypto.randomUUID(),
     };
 
@@ -116,10 +126,7 @@ function App() {
     setMessage('');
   }, [message, sendMessage]);
 
-
-
   const handleJoinRoom = async () => {
-
     const headers = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${TOKEN.trim()}`,
@@ -132,7 +139,7 @@ function App() {
           Authorization: `Bearer ${TOKEN.trim()}`,
         },
       });
-      axios.post(`${URL}/rooms/join/${ROOM_ID}`, {}, { headers: headers })
+      axios.post(`${URL}/rooms/join/${ROOM_ID}`, {}, { headers: headers });
 
       console.log('Response status:', response.status);
       console.log('Response headers:', response.headers);
@@ -154,11 +161,15 @@ function App() {
   };
 
   const handleLogin = async () => {
-    axios.post('https://tefihub-api.tefibit.com/api/auth/login', { email, password }).then((res) => {
-      setUser(res.data.data);
-    }).catch((err) => { console.log(err) });
-
-  }
+    axios
+      .post('https://tefihub-api.tefibit.com/api/auth/login', { email, password })
+      .then((res) => {
+        setUser(res.data.data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  };
 
   return (
     <div className='chat-container'>
@@ -176,29 +187,24 @@ function App() {
           {error && <span className='error'> (Error occurred)</span>}
         </div>
 
-        {
-          user ? (
-            <button onClick={handleJoinRoom} style={{ height: '100%' }}>
-              User: {user.user_id} - Join Room {ROOM_ID}
-            </button>
-          ) : (
+        {user ? (
+          <button onClick={handleJoinRoom} style={{ height: '100%' }}>
+            User: {user.user_id} - Join Room {ROOM_ID}
+          </button>
+        ) : (
+          <div>
             <div>
-              <div>
-                <input type="text" placeholder='Email...' onChange={(e) => setEmail(e.target.value)} />
-              </div>
-              <div>
-                <input type="text" placeholder='Password...' onChange={(e) => setPassword(e.target.value)} />
-              </div>
-
-              <button onClick={handleLogin} style={{ height: '100%' }}>
-                Login
-              </button>
-
+              <input type='text' placeholder='Email...' onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div>
+              <input type='password' placeholder='Password...' onChange={(e) => setPassword(e.target.value)} />
             </div>
 
-          )
-        }
-
+            <button onClick={handleLogin} style={{ height: '100%' }}>
+              Login
+            </button>
+          </div>
+        )}
       </div>
 
       <div className='messages-container'>
