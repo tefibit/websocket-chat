@@ -33,8 +33,8 @@ export type WebSocketMessageResult = Omit<WebSocketMessage, 'message_type'> & {
 // const SOCKET_URL = 'ws://146.190.86.208:8088/ws/1';
 const ROOM_ID = 1;
 const USER_ID = 1;
-const SOCKET_URL = `ws://146.190.86.208:8088/ws/${USER_ID}`;
-const URL = 'http://146.190.86.208:8088/api';
+const SOCKET_URL = `wss://tefihub-api.tefibit.com/ws/${USER_ID}`;
+const URL = 'https://tefihub-api.tefibit.com/api';
 const TOKEN = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE3NDkyODU0MDMsImlhdCI6MTc0ODY4MDYwMywiZW1haWwiOiJsZXRvYW4yODVAZ21haWwuY29tIiwiaWQiOjF9.ra71uAhxbrQJQ863D-tiNZirFWaqdKxeHqO_FtLivJ0';
 
 function App() {
